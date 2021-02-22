@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 class Evento {
   String _id;
+  String _idMorador;
   String _moradorResponsavel;
   String _nomeEvento;
   String _condominio;
@@ -17,6 +18,7 @@ class Evento {
 
   Evento.fromDocumentSnapshot(DocumentSnapshot documentSnapshot) {
     this.id = documentSnapshot.id;
+    this.idMorador = documentSnapshot['idMorador'];
     this.moradorResponsavel = documentSnapshot['moradorResponsavel'];
     this.nomeEvento = documentSnapshot['nomeEvento'];
     this.condominio = documentSnapshot['condominio'];
@@ -37,6 +39,7 @@ class Evento {
   Map<String, dynamic> toMap() {
     Map<String, dynamic> map = {
       "id": this.id,
+      "idMorador": this.idMorador,
       "moradorResponsavel": this.moradorResponsavel,
       "nomeEvento": this.nomeEvento,
       "condominio": this.condominio,
@@ -54,6 +57,12 @@ class Evento {
 
   set id(String value) {
     _id = value;
+  }
+
+  String get idMorador => _idMorador;
+
+  set idMorador(String value) {
+    _idMorador = value;
   }
 
   String get moradorResponsavel => _moradorResponsavel;

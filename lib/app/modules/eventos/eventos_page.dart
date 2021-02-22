@@ -33,6 +33,7 @@ class _EventosPageState extends ModularState<EventosPage, EventosController> {
   String hinthoraInicial = "Inicio";
   String hinthoraFinal = "Termino";
   String _idCondominio;
+  String _idMorador;
   TimeOfDay horaInicial;
   TimeOfDay horaFinal;
   String _espacoSelecionado = "";
@@ -71,11 +72,13 @@ class _EventosPageState extends ModularState<EventosPage, EventosController> {
     String condominio = snapshot.get("condominio");
     String morador = snapshot.get("nome");
     String id = snapshot.get("idCondominio");
+    String idMorador = snapshot.get("id");
 
     setState(() {
       condominioUsuario = condominio;
       moradorResponsavel = morador;
       _idCondominio = id;
+      _idMorador = idMorador;
     });
   }
 
@@ -153,6 +156,7 @@ class _EventosPageState extends ModularState<EventosPage, EventosController> {
     evento.horaInicial = hinthoraInicial;
     evento.horaFinal = hinthoraFinal;
     evento.condominio = condominioUsuario;
+    evento.idMorador = _idMorador;
     evento.status = false;
     FirebaseFirestore db = FirebaseFirestore.instance;
 
@@ -490,6 +494,7 @@ class _EventosPageState extends ModularState<EventosPage, EventosController> {
                 onChanged: (newValue) {
                   setState(() {
                     _isSalaDeJogos = newValue;
+                    _espacoSelecionado = _titleSaladeJogos;
                   });
                 },
                 controlAffinity:

@@ -4,7 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:interport_app/app/shared/model/ocorrencia.dart';
 import 'livro_ocorrencia_controller.dart';
-import 'package:extended_masked_text/extended_masked_text.dart';
+import 'dart:async';
+import 'package:flutter_email_sender/flutter_email_sender.dart';
 
 class LivroOcorrenciaPage extends StatefulWidget {
   final String title;
@@ -30,7 +31,32 @@ class _LivroOcorrenciaPageState
   String _bloco;
   String _descricao;
   String _title;
+  String _emailSindico = "";
   Ocorrencia _ocorrencia;
+  List<String> attachments = [];
+  bool isHTML = false;
+
+  Future<void> send() async {
+    final Email email = Email(
+      body: _descricao,
+      subject: _title,
+      recipients: [_emailSindico],
+      attachmentPaths: attachments,
+      isHTML: isHTML,
+    );
+
+    String platformResponse;
+
+    try {
+      await FlutterEmailSender.send(email);
+      platformResponse = 'success';
+    } catch (error) {
+      platformResponse = error.toString();
+    }
+
+    if (!mounted) return;
+    print(platformResponse);
+  }
 
   _verificarUsuarioLogado() async {
     FirebaseAuth auth = FirebaseAuth.instance;
@@ -57,6 +83,29 @@ class _LivroOcorrenciaPageState
     });
   }
 
+  Future<Stream<QuerySnapshot>> _getMail() async {
+    await _verificarUsuarioLogado();
+    FirebaseFirestore db = FirebaseFirestore.instance;
+
+    Query query = db
+        .collection('Usuarios')
+        .where("tipoUsuario", isEqualTo: "Sindico")
+        .where("idCondominio", isEqualTo: _condominioId);
+
+    Stream<QuerySnapshot> stream = query.snapshots();
+    //print(_selected);
+
+    stream.listen((dados) {
+      dados.docs.forEach((element) {
+        print(element.data());
+        setState(() {
+          _emailSindico = element.get("email");
+          print(_emailSindico);
+        });
+      });
+    });
+  }
+
   _cadastrarOcorrencia() async {
     Ocorrencia ocorrencia = Ocorrencia(
       id: _ocorrencia.id,
@@ -75,12 +124,14 @@ class _LivroOcorrenciaPageState
     db.collection("Ocorrencias").doc(_ocorrencia.id).set(ocorrencia.toJson());
     _controllerTitle.clear();
     _controllerDescricao.clear();
+    send();
   }
 
   @override
   void initState() {
     _verificarUsuarioLogado();
     _ocorrencia = Ocorrencia.gerarID();
+    _getMail();
     super.initState();
   }
 
