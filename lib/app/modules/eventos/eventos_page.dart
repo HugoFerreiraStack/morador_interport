@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:interport_app/app/modules/eventos/meus_eventos_page/meus_eventos_page.dart';
 import 'package:interport_app/app/shared/model/Eventos.dart';
 import 'package:intl/intl.dart';
 import 'eventos_controller.dart';
@@ -69,10 +70,11 @@ class _EventosPageState extends ModularState<EventosPage, EventosController> {
     FirebaseFirestore db = FirebaseFirestore.instance;
     DocumentSnapshot snapshot =
         await db.collection("Usuarios").doc(user.uid).get();
-    String condominio = snapshot.get("condominio");
-    String morador = snapshot.get("nome");
-    String id = snapshot.get("idCondominio");
-    String idMorador = snapshot.get("id");
+    final json = snapshot.data();
+    String condominio = json["condominio"];
+    String morador = json["nome"];
+    String id = json["idCondominio"];
+    String idMorador = user.uid;
 
     setState(() {
       condominioUsuario = condominio;
@@ -115,7 +117,7 @@ class _EventosPageState extends ModularState<EventosPage, EventosController> {
     if (picked != null && picked != selectedDate)
       setState(() {
         selectedDate = picked;
-        _evento.data = selectedDate.toString();
+        _evento.data = selectedDate;
 
         hintData = formatter.format(selectedDate).toString();
       });
@@ -152,7 +154,7 @@ class _EventosPageState extends ModularState<EventosPage, EventosController> {
     evento.nomeEvento = nomeEvento;
     evento.espaco = _espacoSelecionado;
     evento.descricao = descricao;
-    evento.data = hintData;
+    evento.data = _evento.data;
     evento.horaInicial = hinthoraInicial;
     evento.horaFinal = hinthoraFinal;
     evento.condominio = condominioUsuario;
@@ -517,9 +519,21 @@ class _EventosPageState extends ModularState<EventosPage, EventosController> {
                 onPressed: () {
                   _cadastrarEvento();
                 }),
+            _verEventosButton(),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _verEventosButton() {
+    return FlatButton(
+      onPressed: () {
+        Modular.to.push(MaterialPageRoute(
+          builder: (context) => MeusEventosPage(),
+        ));
+      },
+      child: Text('Ver meus eventos'),
     );
   }
 }

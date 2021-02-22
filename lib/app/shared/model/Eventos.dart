@@ -1,33 +1,37 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import 'package:meta/meta.dart';
 
 class Evento {
-  String _id;
-  String _idMorador;
-  String _moradorResponsavel;
-  String _nomeEvento;
-  String _condominio;
-  String _espaco;
-  String _descricao;
-  String _data;
-  String _horaInicial;
-  String _horaFinal;
-  bool _status;
+  String id;
+  String idMorador;
+  String moradorResponsavel;
+  String nomeEvento;
+  String condominio;
+  String espaco;
+  String descricao;
+  DateTime data;
+  String horaInicial;
+  String horaFinal;
+  bool status;
 
   Evento();
 
   Evento.fromDocumentSnapshot(DocumentSnapshot documentSnapshot) {
+    DateFormat format = DateFormat('dd/MM/yyy');
+    Map<String, dynamic> json = documentSnapshot.data();
+
     this.id = documentSnapshot.id;
-    this.idMorador = documentSnapshot['idMorador'];
-    this.moradorResponsavel = documentSnapshot['moradorResponsavel'];
-    this.nomeEvento = documentSnapshot['nomeEvento'];
-    this.condominio = documentSnapshot['condominio'];
-    this.espaco = documentSnapshot['espaco'];
-    this.descricao = documentSnapshot['descricao'];
-    this.data = documentSnapshot['data'];
-    this.horaInicial = documentSnapshot['horaInicial'];
-    this.horaFinal = documentSnapshot['horaFinal'];
-    this.status = documentSnapshot['status'];
+    this.idMorador = json['idMorador'];
+    this.moradorResponsavel = json['moradorResponsavel'];
+    this.nomeEvento = json['nomeEvento'];
+    this.condominio = json['condominio'];
+    this.espaco = json['espaco'];
+    this.descricao = json['descricao'];
+    this.data = format.parse(json['data']);
+    this.horaInicial = json['horaInicial'];
+    this.horaFinal = json['horaFinal'];
+    this.status = json['status'];
   }
 
   Evento.gerarID() {
@@ -37,6 +41,7 @@ class Evento {
   }
 
   Map<String, dynamic> toMap() {
+    DateFormat format = DateFormat('dd/MM/yyy');
     Map<String, dynamic> map = {
       "id": this.id,
       "idMorador": this.idMorador,
@@ -45,77 +50,34 @@ class Evento {
       "condominio": this.condominio,
       "espaco": this.espaco,
       "descricao": this.descricao,
-      "data": this.data,
+      "data": format.format(this.data),
       "horaInicial": this.horaInicial,
       "horaFinal": this.horaFinal,
       "status": this.status,
     };
     return map;
   }
+}
 
-  String get id => _id;
+class Convidado {
+  String nome;
+  String cpf;
+  String id;
 
-  set id(String value) {
-    _id = value;
+  Convidado({
+    @required this.nome,
+    @required this.cpf,
+  });
+
+  static Convidado fromJson(Map<String, dynamic> json) {
+    return Convidado(
+      cpf: json['cpf'],
+      nome: json['nome'],
+    );
   }
 
-  String get idMorador => _idMorador;
-
-  set idMorador(String value) {
-    _idMorador = value;
-  }
-
-  String get moradorResponsavel => _moradorResponsavel;
-
-  set moradorResponsavel(String value) {
-    _moradorResponsavel = value;
-  }
-
-  String get nomeEvento => _nomeEvento;
-
-  set nomeEvento(String value) {
-    _nomeEvento = value;
-  }
-
-  String get condominio => _condominio;
-
-  set condominio(String value) {
-    _condominio = value;
-  }
-
-  String get espaco => _espaco;
-
-  set espaco(String value) {
-    _espaco = value;
-  }
-
-  String get descricao => _descricao;
-
-  set descricao(String value) {
-    _descricao = value;
-  }
-
-  String get data => _data;
-
-  set data(String value) {
-    _data = value;
-  }
-
-  String get horaInicial => _horaInicial;
-
-  set horaInicial(String value) {
-    _horaInicial = value;
-  }
-
-  String get horaFinal => _horaFinal;
-
-  set horaFinal(String value) {
-    _horaFinal = value;
-  }
-
-  bool get status => _status;
-
-  set status(bool value) {
-    _status = value;
-  }
+  Map<String, dynamic> toJson() => {
+        'nome': this.nome,
+        'cpf': this.cpf,
+      };
 }

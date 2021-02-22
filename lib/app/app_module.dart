@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:interport_app/app/modules/ocorrencias/ocorrencias_module.dart';
+import 'package:interport_app/app/shared/repositories/eventos_api.dart';
 import 'package:interport_app/app/shared/repositories/user_api.dart';
 
 import 'app_controller.dart';
@@ -31,6 +32,7 @@ class AppModule extends MainModule {
   List<Bind> get binds => [
         $AppController,
         Bind((i) => UserApi()),
+        Bind((i) => EventosApi()),
       ];
 
   @override
