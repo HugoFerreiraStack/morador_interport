@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
+import 'package:interport_app/app/modules/ocorrencias/ocorrencias_module.dart';
 import 'package:interport_app/app/shared/repositories/user_api.dart';
 
 import 'app_controller.dart';
@@ -52,6 +53,7 @@ class AppModule extends MainModule {
         ModularRouter('/visitas', module: VisitasModule()),
         ModularRouter('/loja', module: LojaModule()),
         ModularRouter('/politicas', module: PoliticasDaEmpresaModule()),
+        ModularRouter('/politicas', module: OcorrenciasModule()),
         ModularRouter('/eventos_solicitados',
             child: (_, args) => EventosSolicitadosPage()),
         ModularRouter('/cad_produtos',
