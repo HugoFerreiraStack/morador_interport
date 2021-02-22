@@ -4,6 +4,7 @@ import 'package:meta/meta.dart';
 class Ocorrencia {
   String id;
   String idUsuario;
+  String title;
   String nomeUsuario;
   String telefoneUsuario;
   String condominioNome;
@@ -24,7 +25,14 @@ class Ocorrencia {
     @required this.bloco,
     @required this.data,
     @required this.descricao,
+    @required this.title,
   });
+
+  Ocorrencia.gerarID() {
+    FirebaseFirestore db = FirebaseFirestore.instance;
+    CollectionReference ocorrencias = db.collection("Ocorrencias");
+    this.id = ocorrencias.doc().id;
+  }
 
   static Ocorrencia fromJson(Map<String, dynamic> json) {
     return Ocorrencia(
@@ -37,6 +45,7 @@ class Ocorrencia {
       bloco: json['bloco'],
       data: json['data'].toDate(),
       descricao: json['descricao'],
+      title: json['titulo'],
     );
   }
 
@@ -50,5 +59,6 @@ class Ocorrencia {
         "bloco": this.bloco,
         "data": Timestamp.fromDate(this.data),
         "descricao": this.descricao,
+        "titulo": this.title,
       };
 }

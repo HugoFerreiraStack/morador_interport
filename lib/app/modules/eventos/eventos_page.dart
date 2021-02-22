@@ -4,7 +4,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:interport_app/app/shared/model/Eventos.dart';
+import 'package:intl/intl.dart';
 import 'eventos_controller.dart';
 
 class EventosPage extends StatefulWidget {
@@ -17,25 +19,47 @@ class EventosPage extends StatefulWidget {
 
 class _EventosPageState extends ModularState<EventosPage, EventosController> {
   //use 'controller' variable to access controller
-  final formKey = GlobalKey<FormState>();
   TextEditingController _controllerMoradorResponsavel = TextEditingController();
   TextEditingController _controllerNomeEvento = TextEditingController();
   TextEditingController _controllerEspaco = TextEditingController();
   TextEditingController _controllerDescricao = TextEditingController();
   DateTime selectedDate = DateTime.now();
+  DateFormat formatter = DateFormat('dd/MM/yyyy');
   String moradorResponsavel;
   String nomeEvento;
-  String espaco;
+
   String descricao;
   String hintData = "Data do Evento";
-  String hinthoraInicial = "Hora de Inicio";
-  String hinthoraFinal = "Hora de Termino";
+  String hinthoraInicial = "Inicio";
+  String hinthoraFinal = "Termino";
+  String _idCondominio;
   TimeOfDay horaInicial;
   TimeOfDay horaFinal;
-  bool status = false;
+  String _espacoSelecionado = "";
+  String _titleAcademia = "Academia";
+  String _titleChurrasqueira = "Churrasqueira";
+  String _titlePiscina = "Piscina";
+  String _titleQuadraDeTenis = "Quadra de Tenis";
+  String _titlefutsal = "Quadra de Futsal";
+  String _titleSaladeJogos = "Sala de Jogos";
+  String _titleSalaoDeFestas = "Salão de Festas";
+  String status = "";
+  bool _academia = false;
+  bool _isAcademia = false;
+  bool _churrasqueira = false;
+  bool _isChurrasqueira = false;
+  bool _piscina = false;
+  bool _isPiscina = false;
+  bool _quadraDeTenis = false;
+  bool _isQuadraDeTenis = false;
+  bool _quadraFutsal = false;
+  bool _isQuadraFutsal = false;
+  bool _salaDeJogos = false;
+  bool _isSalaDeJogos = false;
+  bool _salaoDeFestas = false;
+  bool _isSalaoDeFestas = false;
   Evento _evento;
   String condominioUsuario;
-  final _controller = StreamController<QuerySnapshot>.broadcast();
 
   _verificarUsuarioLogado() async {
     FirebaseAuth auth = FirebaseAuth.instance;
@@ -46,10 +70,35 @@ class _EventosPageState extends ModularState<EventosPage, EventosController> {
         await db.collection("Usuarios").doc(user.uid).get();
     String condominio = snapshot.get("condominio");
     String morador = snapshot.get("nome");
+    String id = snapshot.get("idCondominio");
 
     setState(() {
       condominioUsuario = condominio;
       moradorResponsavel = morador;
+      _idCondominio = id;
+    });
+  }
+
+  _getEspacosDisponiveis() async {
+    await _verificarUsuarioLogado();
+    FirebaseFirestore db = FirebaseFirestore.instance;
+    DocumentSnapshot snapshot =
+        await db.collection("Condominios").doc(_idCondominio).get();
+    bool academia = snapshot.get("academia");
+    bool churrasqueira = snapshot.get("churrasqueira");
+    bool piscina = snapshot.get("piscina");
+    bool quadraDeTenis = snapshot.get("quadraDeTenis");
+    bool quadraFutsal = snapshot.get("quadraFutsal");
+    bool salaDeJogos = snapshot.get("salaDeJogos");
+    bool salaoDeFestas = snapshot.get("salaoDeFestas");
+    setState(() {
+      _academia = academia;
+      _churrasqueira = churrasqueira;
+      _piscina = piscina;
+      _quadraDeTenis = quadraDeTenis;
+      _quadraFutsal = quadraFutsal;
+      _salaDeJogos = salaDeJogos;
+      _salaoDeFestas = salaoDeFestas;
     });
   }
 
@@ -65,7 +114,7 @@ class _EventosPageState extends ModularState<EventosPage, EventosController> {
         selectedDate = picked;
         _evento.data = selectedDate.toString();
 
-        hintData = "${selectedDate.toLocal()}".split(' ')[0];
+        hintData = formatter.format(selectedDate).toString();
       });
   }
 
@@ -94,9 +143,24 @@ class _EventosPageState extends ModularState<EventosPage, EventosController> {
   }
 
   _cadastrarEvento() async {
+    Evento evento = Evento();
+    evento.id = _evento.id;
+    evento.moradorResponsavel = moradorResponsavel;
+    evento.nomeEvento = nomeEvento;
+    evento.espaco = _espacoSelecionado;
+    evento.descricao = descricao;
+    evento.data = hintData;
+    evento.horaInicial = hinthoraInicial;
+    evento.horaFinal = hinthoraFinal;
+    evento.condominio = condominioUsuario;
+    evento.status = false;
     FirebaseFirestore db = FirebaseFirestore.instance;
 
-    db.collection("Eventos").doc(_evento.id).set(_evento.toMap());
+    db.collection("Eventos").doc(_evento.id).set(evento.toMap());
+    _controllerMoradorResponsavel.clear();
+    _controllerDescricao.clear();
+    _controllerNomeEvento.clear();
+    _controllerDescricao.clear();
   }
 
   @override
@@ -105,6 +169,7 @@ class _EventosPageState extends ModularState<EventosPage, EventosController> {
     horaInicial = TimeOfDay.now();
     horaFinal = TimeOfDay.now();
     _evento = Evento.gerarID();
+    _getEspacosDisponiveis();
     super.initState();
   }
 
@@ -112,194 +177,342 @@ class _EventosPageState extends ModularState<EventosPage, EventosController> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.title),
+        centerTitle: true,
+        backgroundColor: Colors.white,
+        title: Text(
+          "Novo Evento",
+          style: TextStyle(color: Colors.black),
+        ),
+        leading: IconButton(
+          icon: Icon(
+            Icons.arrow_back_ios,
+            color: Colors.black,
+          ),
+          onPressed: () {
+            Modular.to.pop(context);
+          },
+        ),
       ),
-      body: Container(
+      body: SingleChildScrollView(
         padding: EdgeInsets.all(16),
-        child: SingleChildScrollView(
-          child: Form(
-            key: formKey,
-            child: Column(
-              children: <Widget>[
-                SizedBox(
-                  height: 30,
-                ),
-                TextFormField(
-                  onSaved: (nome) {
-                    _evento.moradorResponsavel = nome;
-                  },
-                  validator: (valor) {
-                    if (valor.isEmpty) {
-                      return "Este campo é obrigatorio";
-                    }
-                    return null;
-                  },
-                  keyboardType: TextInputType.text,
-                  decoration: InputDecoration(
-                      prefixIcon: Icon(
-                        Icons.person,
-                        color: Color(0xFF1E1C3F),
-                      ),
-                      hintText: "Responsavel pelo evento",
-                      contentPadding: EdgeInsets.fromLTRB(32, 16, 32, 16),
-                      filled: true,
-                      fillColor: Colors.white,
-                      border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(6))),
-                ),
-                SizedBox(
-                  height: 10,
-                ),
-                TextFormField(
-                  onSaved: (nomeEvento) {
-                    _evento.nomeEvento = nomeEvento;
-                  },
-                  validator: (valor) {
-                    if (valor.isEmpty) {
-                      return "Este campo é obrigatorio";
-                    }
-                    return null;
-                  },
-                  keyboardType: TextInputType.text,
-                  decoration: InputDecoration(
-                      prefixIcon: Icon(
-                        Icons.title,
-                        color: Color(0xFF1E1C3F),
-                      ),
-                      hintText: "Nome do Evento",
-                      contentPadding: EdgeInsets.fromLTRB(32, 16, 32, 16),
-                      filled: true,
-                      fillColor: Colors.white,
-                      border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(6))),
-                ),
-                SizedBox(
-                  height: 10,
-                ),
-                TextFormField(
-                  onSaved: (dataEvento) {},
-                  keyboardType: TextInputType.datetime,
-                  decoration: InputDecoration(
-                      prefixIcon: Icon(
-                        Icons.calendar_today,
-                        color: Color(0xFF1E1C3F),
-                      ),
-                      hintText: hintData,
-                      //hintText: "${selectedDate.toLocal()}".split(' ')[0],
-                      contentPadding: EdgeInsets.fromLTRB(32, 16, 32, 16),
-                      filled: true,
-                      fillColor: Colors.white,
-                      border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(6))),
-                ),
-                TextButton(
-                  onPressed: () => _selectDate(context),
-                  child: Text(
-                    "Selecione a data do evento",
-                    style: TextStyle(fontSize: 15),
-                  ),
-                ),
-                TextField(
-                  keyboardType: TextInputType.datetime,
-                  decoration: InputDecoration(
-                      prefixIcon: Icon(
-                        Icons.calendar_today,
-                        color: Color(0xFF1E1C3F),
-                      ),
-                      hintText: hinthoraInicial,
-                      //hintText: "${selectedDate.toLocal()}".split(' ')[0],
-                      contentPadding: EdgeInsets.fromLTRB(32, 16, 32, 16),
-                      filled: true,
-                      fillColor: Colors.white,
-                      border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(6))),
-                ),
-                TextButton(
-                  onPressed: () => _selectHourInitial(context),
-                  child: Text(
-                    "Selecione Hora inicial",
-                    style: TextStyle(fontSize: 15),
-                  ),
-                ),
-                TextField(
-                  keyboardType: TextInputType.datetime,
-                  decoration: InputDecoration(
-                      prefixIcon: Icon(
-                        Icons.calendar_today,
-                        color: Color(0xFF1E1C3F),
-                      ),
-                      hintText: hinthoraFinal,
-                      //hintText: "${selectedDate.toLocal()}".split(' ')[0],
-                      contentPadding: EdgeInsets.fromLTRB(32, 16, 32, 16),
-                      filled: true,
-                      fillColor: Colors.white,
-                      border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(6))),
-                ),
-                TextButton(
-                  onPressed: () => _selectHourFinal(context),
-                  child: Text(
-                    "Selecione Hora Final",
-                    style: TextStyle(fontSize: 15),
-                  ),
-                ),
-                TextFormField(
-                  onSaved: (descricao) {
-                    _evento.descricao = descricao;
-                  },
-                  validator: (valor) {
-                    if (valor.isEmpty) {
-                      return "Este campo é obrigatorio";
-                    }
-                    return null;
-                  },
-                  keyboardType: TextInputType.text,
-                  decoration: InputDecoration(
-                      prefixIcon: Icon(
-                        Icons.person,
-                        color: Color(0xFF1E1C3F),
-                      ),
-                      hintText: "Descrição do Evento",
-                      contentPadding: EdgeInsets.fromLTRB(32, 16, 32, 16),
-                      filled: true,
-                      fillColor: Colors.white,
-                      border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(6))),
-                ),
-                SizedBox(
-                  height: 20,
-                ),
-                RaisedButton(
-                  child: Text(
-                    "CADASTRAR",
-                    style: TextStyle(color: Colors.white, fontSize: 20),
-                  ),
-                  color: Color(0xFF1E1C3F),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(5)),
-                  padding:
-                      EdgeInsets.only(left: 80, right: 80, top: 16, bottom: 16),
-                  onPressed: () async {
-                    if (formKey.currentState.validate()) {
-                      setState(() {
-                        _evento.status = status;
-                        _evento.condominio = condominioUsuario;
-                        _evento.moradorResponsavel =
-                            _controllerMoradorResponsavel.text;
-                        _evento.nomeEvento = _controllerNomeEvento.text;
-                        formKey.currentState.save();
-                        _cadastrarEvento();
-                        Modular.to.pop();
-                      });
-                    }
-                  },
-                ),
-                SizedBox(
-                  height: 20,
+        child: Column(
+          children: <Widget>[
+            SizedBox(
+              height: 30,
+            ),
+            Row(
+              children: [
+                Text(
+                  "Responsável pelo evento",
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                 )
               ],
             ),
-          ),
+            SizedBox(
+              height: 5,
+            ),
+            TextFormField(
+              onChanged: (nome) {
+                moradorResponsavel = nome;
+              },
+              validator: (valor) {
+                if (valor.isEmpty) {
+                  return "Este campo é obrigatorio";
+                }
+                return null;
+              },
+              keyboardType: TextInputType.text,
+              decoration: InputDecoration(
+                  hintText: "Responsavel pelo evento",
+                  contentPadding: EdgeInsets.fromLTRB(32, 16, 32, 16),
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(6))),
+            ),
+            SizedBox(
+              height: 20,
+            ),
+            Row(
+              children: [
+                Text(
+                  "Titulo do Evento",
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+              ],
+            ),
+            SizedBox(
+              height: 5,
+            ),
+            TextFormField(
+              onChanged: (name) {
+                nomeEvento = name;
+              },
+              validator: (valor) {
+                if (valor.isEmpty) {
+                  return "Este campo é obrigatorio";
+                }
+                return null;
+              },
+              keyboardType: TextInputType.text,
+              decoration: InputDecoration(
+                  hintText: "Titulo do Evento",
+                  contentPadding: EdgeInsets.fromLTRB(32, 16, 32, 16),
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(6))),
+            ),
+            SizedBox(
+              height: 20,
+            ),
+            Row(
+              children: [
+                Text(
+                  "Data do Evento",
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+              ],
+            ),
+            SizedBox(
+              height: 5,
+            ),
+            TextFormField(
+              readOnly: true,
+              onTap: () {
+                _selectDate(context);
+              },
+              decoration: InputDecoration(
+                  prefixIcon: Icon(
+                    Icons.calendar_today,
+                    color: Color(0xFF1E1C3F),
+                  ),
+                  hintText: hintData,
+                  //hintText: "${selectedDate.toLocal()}".split(' ')[0],
+                  contentPadding: EdgeInsets.fromLTRB(32, 16, 32, 16),
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(6))),
+            ),
+            SizedBox(
+              height: 20,
+            ),
+            Row(
+              children: [
+                Text(
+                  "Hora do Evento",
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+              ],
+            ),
+            SizedBox(
+              height: 5,
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Flexible(
+                  child: TextField(
+                    onTap: () {
+                      _selectHourInitial(context);
+                    },
+                    readOnly: true,
+                    decoration: InputDecoration(
+                        prefixIcon: Icon(
+                          FontAwesomeIcons.clock,
+                          color: Color(0xFF1E1C3F),
+                        ),
+                        hintText: hinthoraInicial,
+                        //hintText: "${selectedDate.toLocal()}".split(' ')[0],
+                        contentPadding: EdgeInsets.fromLTRB(32, 16, 32, 16),
+                        filled: true,
+                        fillColor: Colors.white,
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(6))),
+                  ),
+                ),
+                SizedBox(
+                  width: 10,
+                ),
+                Flexible(
+                  child: TextField(
+                    onTap: () {
+                      _selectHourFinal(context);
+                    },
+                    readOnly: true,
+                    decoration: InputDecoration(
+                        prefixIcon: Icon(
+                          FontAwesomeIcons.clock,
+                          color: Color(0xFF1E1C3F),
+                        ),
+                        hintText: hinthoraFinal,
+                        //hintText: "${selectedDate.toLocal()}".split(' ')[0],
+                        contentPadding: EdgeInsets.fromLTRB(32, 16, 32, 16),
+                        filled: true,
+                        fillColor: Colors.white,
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(6))),
+                  ),
+                )
+              ],
+            ),
+            SizedBox(
+              height: 20,
+            ),
+            TextFormField(
+              minLines: 1,
+              maxLines: 5,
+              onChanged: (desc) {
+                descricao = desc;
+              },
+              validator: (valor) {
+                if (valor.isEmpty) {
+                  return "Este campo é obrigatorio";
+                }
+                return null;
+              },
+              keyboardType: TextInputType.text,
+              decoration: InputDecoration(
+                  prefixIcon: Icon(
+                    Icons.description,
+                    color: Color(0xFF1E1C3F),
+                  ),
+                  hintText: "Descrição do Evento",
+                  contentPadding: EdgeInsets.fromLTRB(32, 16, 32, 16),
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(6))),
+            ),
+            SizedBox(
+              height: 20,
+            ),
+            Row(
+              children: [
+                Text(
+                  "Local do Evento",
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                SizedBox(
+                  height: 20,
+                ),
+              ],
+            ),
+            if (_academia == true) ...{
+              CheckboxListTile(
+                title: Text(_titleAcademia),
+                value: _isAcademia,
+                onChanged: (newValue) {
+                  setState(() {
+                    _isAcademia = newValue;
+                    _espacoSelecionado = _titleAcademia;
+                  });
+                },
+                controlAffinity:
+                    ListTileControlAffinity.leading, //  <-- leading Checkbox
+              ),
+            },
+            if (_churrasqueira == true) ...{
+              CheckboxListTile(
+                title: Text(_titleChurrasqueira),
+                value: _isChurrasqueira,
+                onChanged: (newValue) {
+                  setState(() {
+                    _isChurrasqueira = newValue;
+                    _espacoSelecionado = _titleChurrasqueira;
+                  });
+                },
+                controlAffinity:
+                    ListTileControlAffinity.leading, //  <-- leading Checkbox
+              ),
+            },
+            if (_piscina == true) ...{
+              CheckboxListTile(
+                title: Text(_titlePiscina),
+                value: _isPiscina,
+                onChanged: (newValue) {
+                  setState(() {
+                    _isPiscina = newValue;
+                    _espacoSelecionado = _titlePiscina;
+                  });
+                },
+                controlAffinity:
+                    ListTileControlAffinity.leading, //  <-- leading Checkbox
+              ),
+            },
+            if (_quadraDeTenis == true) ...{
+              CheckboxListTile(
+                title: Text(_titleQuadraDeTenis),
+                value: _isQuadraDeTenis,
+                onChanged: (newValue) {
+                  setState(() {
+                    _isQuadraDeTenis = newValue;
+                    _espacoSelecionado = _titleQuadraDeTenis;
+                  });
+                },
+                controlAffinity:
+                    ListTileControlAffinity.leading, //  <-- leading Checkbox
+              ),
+            },
+            if (_quadraFutsal == true) ...{
+              CheckboxListTile(
+                title: Text(_titlefutsal),
+                value: _isQuadraFutsal,
+                onChanged: (newValue) {
+                  setState(() {
+                    _isQuadraFutsal = newValue;
+                    _espacoSelecionado = _titlefutsal;
+                  });
+                },
+                controlAffinity:
+                    ListTileControlAffinity.leading, //  <-- leading Checkbox
+              ),
+            },
+            if (_salaoDeFestas == true) ...{
+              CheckboxListTile(
+                title: Text(_titleSalaoDeFestas),
+                value: _isSalaoDeFestas,
+                onChanged: (newValue) {
+                  setState(() {
+                    _isSalaoDeFestas = newValue;
+                    _espacoSelecionado = _titleSalaoDeFestas;
+                  });
+                },
+                controlAffinity:
+                    ListTileControlAffinity.leading, //  <-- leading Checkbox
+              ),
+            },
+            if (_salaDeJogos == true) ...{
+              CheckboxListTile(
+                title: Text("Sala de Jogos"),
+                value: _isSalaDeJogos,
+                onChanged: (newValue) {
+                  setState(() {
+                    _isSalaDeJogos = newValue;
+                  });
+                },
+                controlAffinity:
+                    ListTileControlAffinity.leading, //  <-- leading Checkbox
+              ),
+            },
+            SizedBox(
+              height: 20,
+            ),
+            RaisedButton(
+                child: Text(
+                  "CADASTRAR",
+                  style: TextStyle(color: Colors.white, fontSize: 20),
+                ),
+                color: Color(0xFF1E1C3F),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(5)),
+                padding:
+                    EdgeInsets.only(left: 80, right: 80, top: 16, bottom: 16),
+                onPressed: () {
+                  _cadastrarEvento();
+                }),
+          ],
         ),
       ),
     );

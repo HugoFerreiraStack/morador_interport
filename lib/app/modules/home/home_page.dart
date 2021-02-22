@@ -1,20 +1,14 @@
 import 'dart:async';
 import 'dart:ffi';
-import 'dart:io';
 import 'dart:typed_data';
 import 'package:animated_card/animated_card.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_image/firebase_image.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
-import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
 import 'package:flutter_phone_direct_caller/flutter_phone_direct_caller.dart';
-import 'package:get_it/get_it.dart';
-import 'package:image_ink_well/image_ink_well.dart';
-import 'package:interport_app/app/shared/model/Condominio.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:intl/intl.dart';
 import 'home_controller.dart';
 
 class HomePage extends StatefulWidget {
@@ -31,12 +25,12 @@ class _HomePageState extends ModularState<HomePage, HomeController> {
   final FirebaseStorage storage = FirebaseStorage(
       app: Firestore.instance.app,
       storageBucket: 'gs://interport-02.appspot.com/');
-
+  FirebaseFirestore db = FirebaseFirestore.instance;
   final _controller = StreamController<QuerySnapshot>.broadcast();
   String condominioUsuario;
   String content;
   String numeroCentral;
-
+  DateFormat formatter = DateFormat('dd/MM/yyyy');
   Uint8List imageBytes;
   String errorMsg;
 
@@ -70,14 +64,14 @@ class _HomePageState extends ModularState<HomePage, HomeController> {
     });
     downloadImage();
     _buscarComunicados();
-    _recuperarNumeroCentral();
+    // _recuperarNumeroCentral();
   }
 
   downloadImage() async {
     storage
         .ref()
         .child(condominioUsuario)
-        .child('/banner.jpg')
+        .child('/banner.png')
         .getData(10000000)
         .then((data) => setState(() {
               imageBytes = data;
@@ -121,9 +115,9 @@ class _HomePageState extends ModularState<HomePage, HomeController> {
         ? Image.memory(
             imageBytes,
             fit: BoxFit.contain,
-            scale: 2,
+            scale: 3,
           )
-        : Text(errorMsg != null ? errorMsg : "Carregando...");
+        : Text(errorMsg != null ? errorMsg : "Nenhum Comunicado...");
     var carregandoDados = Center(
       child: Column(
         children: <Widget>[CircularProgressIndicator()],
@@ -140,7 +134,7 @@ class _HomePageState extends ModularState<HomePage, HomeController> {
         leading: IconButton(
           icon: Icon(
             Icons.arrow_back_ios,
-            color: Colors.red,
+            color: Colors.black,
           ),
           onPressed: () {
             logout();
@@ -158,21 +152,6 @@ class _HomePageState extends ModularState<HomePage, HomeController> {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: <Widget>[
-                FloatingActionButton.extended(
-                  heroTag: "btn1",
-                  backgroundColor: Color(0xFF1E1C3F),
-                  icon: Icon(
-                    Icons.store,
-                    size: 15,
-                  ),
-                  label: Text(
-                    "Loja",
-                    style: TextStyle(fontSize: 10),
-                  ),
-                  onPressed: () {
-                    Modular.to.pushNamed('/loja');
-                  },
-                ),
                 SizedBox(
                   width: 5,
                 ),
@@ -212,7 +191,14 @@ class _HomePageState extends ModularState<HomePage, HomeController> {
               ],
             ),
             SizedBox(
-              height: 15,
+              height: 30,
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[img],
+            ),
+            SizedBox(
+              height: 20,
             ),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -233,15 +219,11 @@ class _HomePageState extends ModularState<HomePage, HomeController> {
             SizedBox(
               height: 10,
             ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: <Widget>[img],
-            ),
-            SizedBox(
-              height: 10,
-            ),
-            StreamBuilder(
-                stream: _controller.stream,
+            StreamBuilder<QuerySnapshot>(
+                stream: db
+                    .collection("Comunicados")
+                    .where("condominio", isEqualTo: condominioUsuario)
+                    .snapshots(),
                 builder: (context, snapshot) {
                   switch (snapshot.connectionState) {
                     case ConnectionState.none:
@@ -255,57 +237,80 @@ class _HomePageState extends ModularState<HomePage, HomeController> {
                         return Container(
                           padding: EdgeInsets.all(25),
                           child: Text(
-                            "",
+                            "Nenhum Comunicado no momento",
                             style: TextStyle(
                                 fontSize: 20, fontWeight: FontWeight.bold),
                           ),
                         );
                       }
                       return Expanded(
-                        child: ListView.builder(
+                        child: ListView.separated(
+                          shrinkWrap: true,
                           itemCount: snapshot.data.docs.length,
-                          padding: EdgeInsets.all(5),
                           itemBuilder: (context, i) {
-                            return new AnimatedCard(
-                                direction: AnimatedCardDirection
-                                    .left, //Initial animation direction
-                                initDelay: Duration(
-                                    milliseconds:
-                                        0), //Delay to initial animation
-                                duration: Duration(seconds: 1), //Initial anima
-                                curve: Curves.bounceOut,
-                                child: Container(
-                                    padding:
-                                        EdgeInsets.symmetric(horizontal: 10),
-                                    child: Card(
-                                        elevation: 2,
-                                        child: ListTile(
-                                          title: Container(
-                                            height: 50,
-                                            child: Text(
-                                              snapshot.data.docs[i]
-                                                  .data()['title']
-                                                  .toString(),
-                                              style: TextStyle(
-                                                  fontSize: 20,
-                                                  fontWeight: FontWeight.bold),
-                                            ),
-                                          ),
-                                          subtitle: Text(
-                                            snapshot.data.docs[i]
-                                                .data()['content']
-                                                .toString(),
-                                            style: TextStyle(
-                                              fontSize: 20,
-                                            ),
-                                          ),
-                                        ))));
+                            return new Container(
+                              padding: EdgeInsets.symmetric(vertical: 12),
+                              color: Colors.white,
+                              width: double.infinity,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: <Widget>[
+                                  SizedBox(
+                                    height: 10,
+                                  ),
+                                  Padding(
+                                    padding: EdgeInsets.symmetric(
+                                        horizontal: 12.0, vertical: 8.0),
+                                    child: Row(
+                                      children: <Widget>[
+                                        Text(
+                                          snapshot.data.docs[i].data()['title'],
+                                          style: TextStyle(
+                                              color: Colors.black,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 20),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  Container(
+                                    padding: EdgeInsets.all(8),
+                                    child: Wrap(
+                                      children: [
+                                        Text(
+                                          snapshot.data.docs[i]
+                                              .data()['content'],
+                                          style: TextStyle(
+                                              fontSize: 16, color: Colors.grey),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  Padding(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: 12.0,
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Text(
+                                          formatter.format(snapshot.data.docs[i]
+                                              .data()['data']
+                                              .toDate()),
+                                        )
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
                           },
+                          separatorBuilder: (BuildContext context, int index) =>
+                              Divider(),
                         ),
                       );
                   }
                   return Container();
-                }),
+                })
           ],
         ),
       ),

@@ -113,7 +113,8 @@ class _LoginPageState extends ModularState<LoginPage, LoginController> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Color(0xFF1E1C3F),
+        elevation: 0,
+        backgroundColor: Colors.white,
         title: Text(widget.title),
       ),
       body: Builder(
@@ -126,7 +127,7 @@ class _LoginPageState extends ModularState<LoginPage, LoginController> {
                   height: 20,
                 ),
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisAlignment: MainAxisAlignment.start,
                   children: <Widget>[
                     Text(
                       "ENTRAR COM CONTA",
@@ -137,7 +138,7 @@ class _LoginPageState extends ModularState<LoginPage, LoginController> {
                 ),
                 SizedBox(height: 20),
                 _form(),
-                SizedBox(height: 20),
+                SizedBox(height: 40),
                 _termosUsoCheckbox(context),
                 SizedBox(height: 20),
                 RaisedButton(
@@ -225,7 +226,7 @@ class _LoginPageState extends ModularState<LoginPage, LoginController> {
             ),
           ),
           SizedBox(
-            height: 10,
+            height: 20,
           ),
           TextFormField(
             autovalidateMode: AutovalidateMode.onUserInteraction,

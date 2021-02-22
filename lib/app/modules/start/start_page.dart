@@ -2,11 +2,11 @@ import 'package:curved_navigation_bar/curved_navigation_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter_modular/flutter_modular.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:interport_app/app/modules/cameras/cameras_module.dart';
 import 'package:interport_app/app/modules/chat/chat_module.dart';
-import 'package:interport_app/app/modules/eventos/eventos_module.dart';
 import 'package:interport_app/app/modules/home/home_module.dart';
-import 'package:interport_app/app/modules/loja/loja_module.dart';
+import 'package:interport_app/app/modules/livro_ocorrencia/livro_ocorrencia_module.dart';
 import 'package:interport_app/app/modules/panico/panico_module.dart';
 import 'package:interport_app/app/modules/visitas/visitas_module.dart';
 import 'start_controller.dart';
@@ -24,7 +24,7 @@ class _StartPageState extends ModularState<StartPage, StartController> {
 
   List widgetOptions = [
     HomeModule(),
-    CamerasModule(),
+    LivroOcorrenciaModule(),
     PanicoModule(),
     ChatModule(),
     VisitasModule(),
@@ -56,7 +56,7 @@ class _StartPageState extends ModularState<StartPage, StartController> {
             color: Colors.white,
           ),
           Icon(
-            Icons.camera_alt,
+            FontAwesomeIcons.book,
             size: 30,
             color: Colors.white,
           ),

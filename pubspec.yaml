@@ -63,6 +63,7 @@ dependencies:
   flutter_phone_direct_caller: ^1.0.1
   font_awesome_flutter: ^8.8.1
   animations: ^1.1.2
+  extended_masked_text: ^1.1.0 
   flutter_modular: ^2.0.1
   flutter:
     sdk: flutter
