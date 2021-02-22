@@ -20,7 +20,7 @@ class _SplashScreenPageState
   void initState() {
     super.initState();
     disposer = autorun((_) {
-      Future.delayed(Duration(seconds: 5)).then((_) {
+      Future.delayed(Duration(seconds: 2)).then((_) {
         Modular.to.pushReplacementNamed('/login');
       });
     });

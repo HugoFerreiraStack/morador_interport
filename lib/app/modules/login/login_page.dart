@@ -1,10 +1,13 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:social_signin_buttons/social_signin_buttons.dart';
+
+import '../../shared/repositories/user_api.dart';
+import '../../shared/utils/loading_dialog.dart';
+import '../../shared/utils/toasts.dart';
 import 'login_controller.dart';
+import 'widgets/termos_uso_bottom_sheet.dart';
 
 class LoginPage extends StatefulWidget {
   final String title;
@@ -15,87 +18,95 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends ModularState<LoginPage, LoginController> {
-  FirebaseAuth _auth = FirebaseAuth.instance;
   final formKey = GlobalKey<FormState>();
-  final TextEditingController _controllerEmail = TextEditingController();
-  final TextEditingController _controllerSenha = TextEditingController();
-  var tipoUsuarioSelecionado;
 
   String email, senha;
-  String _mensagemErro = "";
-  String tipoUsuarioLogado = "";
-  List<String> _tipoUsuario = <String>[
-    "Morador",
-    "Sindico",
-    "Admin",
-    "Funcionario"
-  ];
+  bool showPassword = false;
+  bool aceitouTermos = false;
 
   @override
   void initState() {
-    _verificarUsuarioLogado(tipoUsuarioLogado);
-    _direcionarUsuarioLogado();
+    WidgetsBinding.instance.addPostFrameCallback((timeStamp) {
+      verificarUsuarioLogado();
+    });
     super.initState();
   }
 
-  _direcionarUsuarioLogado() async {
-    await _verificarUsuarioLogado(tipoUsuarioLogado);
-    if (tipoUsuarioLogado == "Morador") {
+  Future<void> verificarUsuarioLogado() async {
+    showLoadingDialog(context);
+    return UserApi.to.getCurrentUser().then((value) {
+      closeLoadingDialog(context);
+      if (value != null) redirecionarUsuario(value.tipoUsuario);
+    }).catchError((err) {
+      closeLoadingDialog(context);
+      print('Erro: $err');
+    });
+  }
+
+  Future<void> login(BuildContext context) async {
+    if (!formKey.currentState.validate())
+      return Toasts.showError(context, 'Verifique os campos e tente novamente');
+
+    if (!aceitouTermos)
+      return Toasts.showError(context, 'Para continuar aceite os termos');
+
+    formKey.currentState.save();
+
+    showLoadingDialog(context);
+    return UserApi.to.login(email, senha).then((value) {
+      closeLoadingDialog(context);
+      redirecionarUsuario(value.usuario.tipoUsuario);
+    }).catchError((err) {
+      closeLoadingDialog(context);
+      print('Erro: $err');
+      if (err is FirebaseAuthException) {
+        switch (err.code) {
+          case 'invalid-email':
+            return Toasts.showError(context, 'Email inválido');
+          case 'user-not-found':
+            return Toasts.showError(context, 'Usuário nao cadastrado');
+          case 'wrong-password':
+            return Toasts.showError(context, 'Senha inválida');
+          case 'user-disabled':
+            return Toasts.showError(context, 'Seu usuario foi desativado');
+          default:
+            return Toasts.showError(context, 'Erro inesperado');
+        }
+      }
+
+      return Toasts.showError(context, 'Erro inesperado');
+    });
+  }
+
+  void showTermos(BuildContext context) {
+    showBottomSheet(context: context, builder: (_) => TermosUsoBottomSheet());
+  }
+
+  void redirecionarUsuario(String tipoUsuario) {
+    if (tipoUsuario == "Morador") {
       Modular.to.pushReplacementNamed("/start");
-    } else if (tipoUsuarioLogado == "Admin") {
+    } else if (tipoUsuario == "Admin") {
       Modular.to.pushReplacementNamed("/admin");
-    } else if (tipoUsuarioLogado == "Sindico") {
+    } else if (tipoUsuario == "Sindico") {
       Modular.to.pushReplacementNamed("start");
     }
   }
 
-  _verificarUsuarioLogado(String tipoUsuario) async {
-    FirebaseAuth auth = FirebaseAuth.instance;
-    User user = await auth.currentUser;
+  String senhaValidator(String value) {
+    if (value.isEmpty) return 'Senha é obrigatória';
+    if (value.length < 6) return 'Senha deve ter no minimo 6 caracteres';
 
-    FirebaseFirestore db = FirebaseFirestore.instance;
-    DocumentSnapshot snapshot =
-        await db.collection("Usuarios").doc(user.uid).get();
-    String tipo = snapshot.get("tipoUsuario");
-    setState(() {
-      tipoUsuarioLogado = tipo;
-    });
+    return null;
   }
 
-  _validarCampos() {
-    email = _controllerEmail.text;
-    senha = _controllerSenha.text;
+  String emailValidator(String value) {
+    if (value.isEmpty) return 'Email é obrigatório';
 
-    if (email.isNotEmpty && email.contains("@")) {
-      if (senha.isNotEmpty && senha.length > 5) {
-        _auth
-            .signInWithEmailAndPassword(email: email, password: senha)
-            .then((firebaseUser) {
-          _verificarUsuarioLogado(tipoUsuarioLogado);
-          if (tipoUsuarioLogado == tipoUsuarioSelecionado) {
-            if (tipoUsuarioLogado == "Morador") {
-              Modular.to.pushReplacementNamed("/start");
-            } else if (tipoUsuarioLogado == "Admin") {
-              Modular.to.pushReplacementNamed("/admin");
-            } else if (tipoUsuarioLogado == "Sindico") {
-              Modular.to.pushReplacementNamed("start");
-            }
-          }
-        }).catchError((onError) {
-          setState(() {
-            _mensagemErro = "Erro ao Fazer Login";
-          });
-        });
-      } else {
-        setState(() {
-          _mensagemErro = "Sua senha deve ter no minimo 6 caracteres";
-        });
-      }
-    } else {
-      setState(() {
-        _mensagemErro = "Preencha um E-mail Válido";
-      });
-    }
+    String regex =
+        r"^[a-zA-Z0-9.a-zA-Z0-9.!#$%&'*+-/=?^_`{|}~]+@[a-zA-Z0-9]+\.[a-zA-Z]+";
+    if (!RegExp(regex).hasMatch(value)) return 'Email invalido';
+
+    return null;
   }
 
   @override
@@ -105,11 +116,10 @@ class _LoginPageState extends ModularState<LoginPage, LoginController> {
         backgroundColor: Color(0xFF1E1C3F),
         title: Text(widget.title),
       ),
-      body: Container(
-        padding: EdgeInsets.all(16),
-        child: SingleChildScrollView(
-          child: Form(
-            key: formKey,
+      body: Builder(
+        builder: (context) {
+          return SingleChildScrollView(
+            padding: EdgeInsets.all(16),
             child: Column(
               children: <Widget>[
                 SizedBox(
@@ -125,85 +135,18 @@ class _LoginPageState extends ModularState<LoginPage, LoginController> {
                     ),
                   ],
                 ),
-                SizedBox(
-                  height: 20,
-                ),
-                TextField(
-                  controller: _controllerEmail,
-                  keyboardType: TextInputType.emailAddress,
-                  onChanged: (value) {
-                    setState(() {
-                      email = value;
-                    });
-                  },
-                  decoration: InputDecoration(
-                      prefixIcon: Icon(
-                        Icons.email,
-                        color: Colors.black,
-                      ),
-                      border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(6)),
-                      labelText: 'E-mail'),
-                ),
-                SizedBox(
-                  height: 10,
-                ),
-                TextField(
-                  controller: _controllerSenha,
-                  keyboardType: TextInputType.text,
-                  obscureText: true,
-                  onChanged: (value) {
-                    setState(() {
-                      senha = value;
-                    });
-                  },
-                  decoration: InputDecoration(
-                    prefixIcon: Icon(
-                      Icons.lock,
-                      color: Colors.black,
-                    ),
-                    border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(6)),
-                    labelText: 'Senha',
-                  ),
-                ),
-                SizedBox(
-                  height: 20,
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: <Widget>[
-                    DropdownButton(
-                      items: _tipoUsuario
-                          .map((value) => DropdownMenuItem(
-                                child: Text(
-                                  value,
-                                ),
-                                value: value,
-                              ))
-                          .toList(),
-                      onChanged: (_tipoUsuarioSelecionado) {
-                        setState(() {
-                          tipoUsuarioSelecionado = _tipoUsuarioSelecionado;
-                        });
-                      },
-                      value: tipoUsuarioSelecionado,
-                      hint: Text("Selecione o Tipo de Usuario"),
-                    )
-                  ],
-                ),
-                SizedBox(
-                  height: 20,
-                ),
+                SizedBox(height: 20),
+                _form(),
+                SizedBox(height: 20),
+                _termosUsoCheckbox(context),
+                SizedBox(height: 20),
                 RaisedButton(
                   color: Color(0xFF1E1C3F),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(5)),
                   padding:
                       EdgeInsets.only(left: 80, right: 80, top: 16, bottom: 16),
-                  onPressed: () async {
-                    await _validarCampos();
-                  },
+                  onPressed: () => login(context),
                   child: Text(
                     "CONTINUAR",
                     style: TextStyle(color: Colors.white, fontSize: 20),
@@ -222,54 +165,92 @@ class _LoginPageState extends ModularState<LoginPage, LoginController> {
                     ),
                   ],
                 ),
-                SizedBox(
-                  height: 5,
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _termosUsoCheckbox(BuildContext context) {
+    return Row(
+      children: [
+        Checkbox(
+          value: aceitouTermos,
+          onChanged: (_) => setState(() => aceitouTermos = _),
+        ),
+        SizedBox(width: 5),
+        Expanded(
+          child: RichText(
+            text: TextSpan(
+              style: TextStyle(
+                color: Colors.black,
+              ),
+              children: [
+                TextSpan(text: 'Ao continuar declaro que li e aceito os '),
+                TextSpan(
+                  text: 'termos de uso',
+                  style: TextStyle(decoration: TextDecoration.underline),
+                  recognizer: TapGestureRecognizer()
+                    ..onTap = () => showTermos(context),
                 ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: <Widget>[
-                    Container(
-                      margin: EdgeInsets.only(bottom: 20),
-                      child: Text(
-                        'Ou entre com',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w400,
-                        ),
-                      ),
-                    )
-                  ],
-                ),
-                SizedBox(
-                  height: 5,
-                ),
-                SignInButton(
-                  Buttons.Facebook,
-                  onPressed: () {},
-                  text: "Entrar com Facebook",
-                ),
-                SizedBox(
-                  height: 10,
-                ),
-                SignInButton(
-                  Buttons.Google,
-                  onPressed: () {},
-                  text: "Entrar com Google",
-                ),
-                SizedBox(
-                  height: 10,
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: <Widget>[
-                    Padding(
-                        padding: EdgeInsets.only(top: 40),
-                        child: Text(_mensagemErro)),
-                  ],
-                )
               ],
             ),
           ),
-        ),
+        )
+      ],
+    );
+  }
+
+  Widget _form() {
+    return Form(
+      key: formKey,
+      child: Column(
+        children: [
+          TextFormField(
+            autovalidateMode: AutovalidateMode.onUserInteraction,
+            onSaved: (newValue) => email = newValue,
+            validator: emailValidator,
+            keyboardType: TextInputType.emailAddress,
+            decoration: InputDecoration(
+              prefixIcon: Icon(
+                Icons.email,
+                color: Colors.black,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(6),
+              ),
+              labelText: 'E-mail',
+            ),
+          ),
+          SizedBox(
+            height: 10,
+          ),
+          TextFormField(
+            autovalidateMode: AutovalidateMode.onUserInteraction,
+            onSaved: (newValue) => senha = newValue,
+            validator: senhaValidator,
+            keyboardType: TextInputType.visiblePassword,
+            obscureText: !showPassword,
+            decoration: InputDecoration(
+              prefixIcon: Icon(
+                Icons.lock,
+                color: Colors.black,
+              ),
+              suffixIcon: GestureDetector(
+                onTap: () => setState(() => showPassword = !showPassword),
+                child: Icon(
+                  showPassword ? Icons.visibility : Icons.visibility_off,
+                ),
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(6),
+              ),
+              labelText: 'Senha',
+            ),
+          ),
+        ],
       ),
     );
   }
