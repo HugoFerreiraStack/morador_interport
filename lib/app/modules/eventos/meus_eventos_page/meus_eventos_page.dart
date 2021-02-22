@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_modular/flutter_modular.dart';
+import 'package:interport_app/app/modules/eventos/convidados_page/lista_convidados_page.dart';
 import 'package:intl/intl.dart';
 
 import '../../../shared/model/Eventos.dart';
@@ -40,6 +42,13 @@ class _MeusEventosPageState extends State<MeusEventosPage> {
     });
   }
 
+  void verConvidados(Evento evento) {
+    if (evento.status == false) return;
+    Modular.to.push(MaterialPageRoute(
+      builder: (context) => ConvidadosPage(evento),
+    ));
+  }
+
   @override
   void initState() {
     WidgetsBinding.instance.addPostFrameCallback((timeStamp) {
@@ -53,7 +62,15 @@ class _MeusEventosPageState extends State<MeusEventosPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('MeusEventosPage'),
+        leading: BackButton(
+          color: Colors.black,
+        ),
+        title: Text(
+          'Meus Eventos',
+          style: TextStyle(color: Colors.black),
+        ),
+        centerTitle: true,
+        backgroundColor: Colors.white,
       ),
       body: Builder(builder: (context) {
         if (loading) return loadingWidget();
@@ -118,6 +135,7 @@ class _MeusEventosPageState extends State<MeusEventosPage> {
       itemBuilder: (context, index) {
         final evento = eventos[index];
         return ListTile(
+          onTap: () => verConvidados(evento),
           title: Row(
             children: [
               Expanded(child: Text(evento.nomeEvento)),

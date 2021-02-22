@@ -25,7 +25,7 @@ class EventosApi {
     return _db
         .collection('Eventos')
         .doc(eventoId)
-        .collection('Convidados')
+        .collection('convidados')
         .orderBy('nome')
         .snapshots()
         .map((event) => event.docs.map((e) {
@@ -35,16 +35,20 @@ class EventosApi {
             }).toList());
   }
 
-  Future<void> addConvidados(String eventoId, List<Convidado> convidados) {
-    final ref =
-        _db.collection('eventos').doc(eventoId).collection('convidados');
-    final batch = _db.batch();
+  Future<void> addConvidados(String eventoId, Convidado convidado) {
+    return _db
+        .collection('Eventos')
+        .doc(eventoId)
+        .collection('convidados')
+        .add(convidado.toJson());
+  }
 
-    convidados.forEach((element) {
-      final doc = ref.doc();
-      batch.set(doc, element.toJson());
-    });
-
-    return batch.commit();
+  Future<void> removerConvidado(String eventoId, Convidado convidado) {
+    return _db
+        .collection('Eventos')
+        .doc(eventoId)
+        .collection('convidados')
+        .doc(convidado.id)
+        .delete();
   }
 }
